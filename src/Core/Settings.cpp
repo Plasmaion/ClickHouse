@@ -5598,6 +5598,9 @@ Parts virtually divided into segments to be distributed between replicas for par
     DECLARE(Bool, parallel_replicas_local_plan, false, R"(
 Build local plan for local replica
 )", BETA) \
+    DECLARE(Bool, parallel_replicas_for_cluster_engines, false, R"(
+Build local plan for local replica
+)", EXPERIMENTAL) \
     \
     DECLARE(Bool, allow_experimental_analyzer, true, R"(
 Allow new query analyzer.
