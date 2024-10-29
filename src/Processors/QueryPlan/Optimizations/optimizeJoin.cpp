@@ -21,7 +21,6 @@
 #include <memory>
 
 
-
 namespace DB::Setting
 {
     extern const SettingsMaxThreads max_threads;
