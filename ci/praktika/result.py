@@ -68,8 +68,9 @@ class Result(MetaClasses.Serializable):
         if isinstance(status, bool):
             status = Result.Status.SUCCESS if status else Result.Status.FAILED
         if not results and not status:
-            print("ERROR: Either .results or .status must be provided")
-            raise
+            Utils.raise_with_error(
+                f"Either .results ({results}) or .status ({status}) must be provided"
+            )
         if not name:
             name = _Environment.get().JOB_NAME
             if not name:

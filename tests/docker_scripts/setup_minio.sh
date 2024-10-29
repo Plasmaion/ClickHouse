@@ -5,6 +5,12 @@ set -euxf -o pipefail
 export MINIO_ROOT_USER=${MINIO_ROOT_USER:-clickhouse}
 export MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-clickhouse}
 
+if [ -d "$TEMP_DIR" ]; then
+  cd "$TEMP_DIR"
+  # add / for minio mc in docker
+  PATH="/:.:$PATH"
+fi
+
 usage() {
   echo $"Usage: $0 <stateful|stateless> <test_path> (default path: /usr/share/clickhouse-test)"
   exit 1
@@ -70,9 +76,10 @@ download_minio() {
 }
 
 start_minio() {
+  pwd
   mkdir -p ./minio_data
-  ./minio --version
-  ./minio server --address ":11111" ./minio_data &
+  minio --version
+  minio server --address ":11111" ./minio_data &
   wait_for_it
   lsof -i :11111
   sleep 5
@@ -80,12 +87,12 @@ start_minio() {
 
 setup_minio() {
   local test_type=$1
-  ./mc alias set clickminio http://localhost:11111 clickhouse clickhouse
-  ./mc admin user add clickminio test testtest
-  ./mc admin policy attach clickminio readwrite --user=test
-  ./mc mb --ignore-existing clickminio/test
+  mc alias set clickminio http://localhost:11111 clickhouse clickhouse
+  mc admin user add clickminio test testtest
+  mc admin policy attach clickminio readwrite --user=test
+  mc mb --ignore-existing clickminio/test
   if [ "$test_type" = "stateless" ]; then
-    ./mc anonymous set public clickminio/test
+    mc anonymous set public clickminio/test
   fi
 }
 
@@ -100,7 +107,7 @@ upload_data() {
   # a path to a file, not a filename
   # shellcheck disable=SC2045
   if [ -d "${data_path}" ]; then
-    ./mc cp --recursive "${data_path}"/ clickminio/test/
+    mc cp --recursive "${data_path}"/ clickminio/test/
   fi
 }
 
@@ -138,7 +145,7 @@ wait_for_it() {
 main() {
   local query_dir
   query_dir=$(check_arg "$@")
-  if [ ! -f ./minio ]; then
+  if ! (minio --version && mc --version); then
     download_minio
   fi
   start_minio

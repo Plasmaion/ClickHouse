@@ -37,7 +37,7 @@ fast_test_job = Job.Config(
     ),
 )
 
-job_build_amd_debug = Job.Config(
+amd_debug_build_job = Job.Config(
     name=JobNames.BUILD_AMD_DEBUG,
     runs_on=[RunnerLabels.BUILDER],
     command="python3 ./ci/jobs/build_clickhouse.py amd_debug",
@@ -59,11 +59,11 @@ job_build_amd_debug = Job.Config(
     provides=[ArtifactNames.ch_debug_binary],
 )
 
-stateless_tests_job = Job.Config(
+stateless_tests_amd_debug_job = Job.Config(
     name=JobNames.STATELESS_TESTS,
     runs_on=[RunnerLabels.BUILDER],
     command="python3 ./ci/jobs/functional_stateless_tests.py amd_debug",
-    run_in_docker="clickhouse/fasttest:latest",
+    run_in_docker="clickhouse/stateless-test",
     digest_config=Job.CacheDigestConfig(
         include_paths=[
             "./ci/jobs/functional_stateless_tests.py",
@@ -79,8 +79,8 @@ workflow = Workflow.Config(
     jobs=[
         style_check_job,
         fast_test_job,
-        job_build_amd_debug,
-        stateless_tests_job,
+        amd_debug_build_job,
+        stateless_tests_amd_debug_job,
     ],
     artifacts=[
         Artifact.Config(
@@ -101,8 +101,8 @@ WORKFLOWS = [
 ]  # type: List[Workflow.Config]
 
 
-if __name__ == "__main__":
-    # local job test inside praktika environment
-    from praktika.runner import Runner
-
-    Runner().run(workflow, fast_test_job, docker="fasttest", local_run=True)
+# if __name__ == "__main__":
+#     # local job test inside praktika environment
+#     from praktika.runner import Runner
+#
+#     Runner().run(workflow, fast_test_job, docker="fasttest", local_run=True)

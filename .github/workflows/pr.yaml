@@ -172,11 +172,11 @@ jobs:
             python3 -m praktika run --job '''Fast test''' --workflow "PR" --ci |& tee /tmp/praktika/praktika_run.log
           fi
 
-  build_amd64_debug:
+  build_amd_debug:
     runs-on: [builder]
     needs: [config_workflow, docker_builds]
-    if: ${{ !failure() && !cancelled() && !contains(fromJson(needs.config_workflow.outputs.data).cache_success_base64, 'QnVpbGQgYW1kNjQgZGVidWc=') }}
-    name: "Build amd64 debug"
+    if: ${{ !failure() && !cancelled() && !contains(fromJson(needs.config_workflow.outputs.data).cache_success_base64, 'QnVpbGQgKGFtZCwgZGVidWcp') }}
+    name: "Build (amd, debug)"
     outputs:
       data: ${{ steps.run.outputs.DATA }}
     steps:
@@ -205,14 +205,14 @@ jobs:
           . /tmp/praktika_setup_env.sh
           set -o pipefail
           if command -v ts &> /dev/null; then
-            python3 -m praktika run --job '''Build amd64 debug''' --workflow "PR" --ci |& ts '[%Y-%m-%d %H:%M:%S]' | tee /tmp/praktika/praktika_run.log
+            python3 -m praktika run --job '''Build (amd, debug)''' --workflow "PR" --ci |& ts '[%Y-%m-%d %H:%M:%S]' | tee /tmp/praktika/praktika_run.log
           else
-            python3 -m praktika run --job '''Build amd64 debug''' --workflow "PR" --ci |& tee /tmp/praktika/praktika_run.log
+            python3 -m praktika run --job '''Build (amd, debug)''' --workflow "PR" --ci |& tee /tmp/praktika/praktika_run.log
           fi
 
   stateless_tests_amd_debug:
     runs-on: [builder]
-    needs: [config_workflow, docker_builds, build_amd64_debug]
+    needs: [config_workflow, docker_builds, build_amd_debug]
     if: ${{ !failure() && !cancelled() && !contains(fromJson(needs.config_workflow.outputs.data).cache_success_base64, 'U3RhdGVsZXNzIHRlc3RzIChhbWQsIGRlYnVnKQ==') }}
     name: "Stateless tests (amd, debug)"
     outputs:
@@ -250,7 +250,7 @@ jobs:
 
   finish_workflow:
     runs-on: [ci_services]
-    needs: [config_workflow, docker_builds, style_check, fast_test, build_amd64_debug, stateless_tests_amd_debug]
+    needs: [config_workflow, docker_builds, style_check, fast_test, build_amd_debug, stateless_tests_amd_debug]
     if: ${{ !cancelled() }}
     name: "Finish Workflow"
     outputs:

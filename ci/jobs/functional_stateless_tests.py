@@ -1,14 +1,17 @@
 import argparse
+import time
 
 from praktika.result import Result
 from praktika.settings import Settings
 from praktika.utils import MetaClasses, Shell, Utils
 
+from jobs.scripts.clickhouse_proc import ClickHouseProc
+from jobs.fast_test import update_path_ch_config
+
 
 class JobStages(metaclass=MetaClasses.WithIter):
-    CHECKOUT_SUBMODULES = "checkout"
-    CMAKE = "cmake"
-    BUILD = "build"
+    INSTALL_CLICKHOUSE = "Install"
+    TEST = "Test"
 
 
 def parse_args():
@@ -25,7 +28,7 @@ def main():
     stop_watch = Utils.Stopwatch()
 
     stages = list(JobStages)
-    stage = args.param or JobStages.CHECKOUT_SUBMODULES
+    stage = args.param or JobStages.INSTALL_CLICKHOUSE
     if stage:
         assert stage in JobStages, f"--param must be one of [{list(JobStages)}]"
         print(f"Job will start from stage [{stage}]")
@@ -36,10 +39,37 @@ def main():
     res = True
     results = []
 
-    if res and JobStages.CHECKOUT_SUBMODULES in stages:
-        info = Shell.get_output(f"ls -l {Settings.INPUT_DIR}")
-        results.append(Result(name="TEST", status=Result.Status.SUCCESS, info=info))
+    Utils.add_to_PATH(f"{Settings.INPUT_DIR}:tests")
+
+    if res and JobStages.INSTALL_CLICKHOUSE in stages:
+        commands = [
+            f"chmod +x {Settings.INPUT_DIR}/clickhouse",
+            f"ln -sf {Settings.INPUT_DIR}/clickhouse {Settings.INPUT_DIR}/clickhouse-server",
+            f"ln -sf {Settings.INPUT_DIR}/clickhouse {Settings.INPUT_DIR}/clickhouse-client",
+            f"rm -rf {Settings.TEMP_DIR}/etc/ && mkdir -p {Settings.TEMP_DIR}/etc/clickhouse-client {Settings.TEMP_DIR}/etc/clickhouse-server",
+            f"cp programs/server/config.xml programs/server/users.xml {Settings.TEMP_DIR}/etc/clickhouse-server/",
+            f"tests/config/install.sh {Settings.TEMP_DIR}/etc/clickhouse-server {Settings.TEMP_DIR}/etc/clickhouse-client",
+            update_path_ch_config,
+            f"clickhouse-server --version",
+        ]
+        results.append(
+            Result.create_from_command_execution(
+                name=JobStages.INSTALL_CLICKHOUSE, command=commands
+            )
+        )
         res = results[-1].is_ok()
+
+    CH = ClickHouseProc()
+    if res and JobStages.TEST in stages:
+        stop_watch_ = Utils.Stopwatch()
+        step_name = "Start ClickHouse Server"
+        print(step_name)
+        res = res and CH.start_minio()
+        res = res and CH.start()
+        res = res and CH.wait_ready()
+        results.append(
+            Result.create_from(name=step_name, status=res, stopwatch=stop_watch_)
+        )
 
     Result.create_from(results=results, stopwatch=stop_watch).complete_job()
 
